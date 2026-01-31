@@ -8,6 +8,14 @@ namespace SecondSight {
     {
         if (!APIs::FCFW) {
             log::error("{}: FCFW API not available, SecondSight will not function properly!", __FUNCTION__);
+            RE::DebugMessageBox("SecondSight: FreeCamera Framework (FCFW) not available, SecondSight will not function properly!");
+            return;
+        }
+
+        if (!APIs::DTR) {
+            log::info("{}: DTR API not available.", __FUNCTION__);
+        } else {
+            APIs::DTR->ShowReticle(true);
         }
 
         if (!APIs::FCFW->RegisterPlugin(SKSE::GetPluginHandle())) {
@@ -22,10 +30,22 @@ namespace SecondSight {
         if (!SKSE::GetMessagingInterface()->RegisterListener(FCFW_API::FCFWPluginName, SecondSight::FreeCameraManager::FCFWMessageHandler)) {
             log::warn("{}: Failed to register FCFW message listener", __FUNCTION__);
         }
+
+        if (APIs::DTR)
+        {
+            // Register listener for DTR target reticle events
+            if (!SKSE::GetMessagingInterface()->RegisterListener(DTR_API::DTRPluginName, SecondSight::FreeCameraManager::DTRMessageHandler)) {
+                log::warn("{}: Failed to register DTR message listener", __FUNCTION__);
+            }
+        }
     }
 
     void FreeCameraManager::FCFWMessageHandler(SKSE::MessagingInterface::Message* a_msg)
     {
+        if (!APIs::FCFW) {
+            return;
+        }
+
         if (!a_msg || !a_msg->sender || strcmp(a_msg->sender, FCFW_API::FCFWPluginName) != 0) {
             return;
         }
@@ -34,10 +54,14 @@ namespace SecondSight {
 
         switch (static_cast<FCFW_API::FCFWMessage>(a_msg->type)) {
         case FCFW_API::FCFWMessage::kPlaybackStart:
-//            TargetReticleManager::GetSingleton().SetReticleMode(TargetReticleManager::ReticleMode::kOff);
+            if (APIs::DTR) {
+                APIs::DTR->ShowReticle(false);
+            }
             break;
         case FCFW_API::FCFWMessage::kPlaybackStop:
-//            TargetReticleManager::GetSingleton().SetReticleMode(TargetReticleManager::ReticleMode::kOn);
+            if (APIs::DTR) {
+                APIs::DTR->ShowReticle(true);
+            }
             break;
         case FCFW_API::FCFWMessage::kPlaybackWait:
             auto* eventData = static_cast<FCFW_API::FCFWTimelineEventData*>(a_msg->data);
@@ -51,6 +75,29 @@ namespace SecondSight {
             break;
         }
     }
+
+    void FreeCameraManager::DTRMessageHandler(SKSE::MessagingInterface::Message* a_msg)
+    {
+        if (!APIs::DTR) {
+            return;
+        }
+
+        if (!a_msg || !a_msg->sender || strcmp(a_msg->sender, DTR_API::DTRPluginName) != 0) {
+            return;
+        }
+        
+        switch (static_cast<DTR_API::DTRMessage>(a_msg->type)) {
+        case DTR_API::DTRMessage::kLostTarget:
+            break;
+        case DTR_API::DTRMessage::kFoundTarget:
+            auto* eventData = static_cast<DTR_API::DTRTimelineEventData*>(a_msg->data);
+            if (eventData && eventData->target) {
+                // found a target
+            }        
+            break;
+        }
+    }
+
     
     void FreeCameraManager::Update() {
         if (RE::UI::GetSingleton()->GameIsPaused()) {
@@ -67,23 +114,50 @@ namespace SecondSight {
         }
     }
   
-    void FreeCameraManager::StartSecondSightEffect(RE::Actor* a_actor) {
+    bool FreeCameraManager::StartSecondSightEffect() {
 
-        if (!a_actor) {
-            log::warn("{}: No actor provided to start Second Sight Effect on.", __FUNCTION__);
-            return;
+        UpdateTarget();
+        if (!m_target) {
+            log::warn("{}: No target available to start Second Sight Effect on.", __FUNCTION__);
+            return false;
         }
         if (IsPlaybackActive()) {
-            return;
+            return false;
         }
         if (m_isFreeCameraActive) {
             log::warn("{}: Free Camera is already active.", __FUNCTION__);
-            return;
+            return false;
+        }
+        // Check if coming from first person and player 3D is hidden
+        auto* player = RE::PlayerCharacter::GetSingleton();
+//        m_wasPlayerHiddenBeforeFreeCam = false;
+        
+auto* playerCamera = RE::PlayerCamera::GetSingleton();
+        if (!playerCamera) {
+            log::error("{}: PlayerCamera not available", __FUNCTION__);
+            return false;
         }
 
-        m_target = a_actor;
+        if (player && playerCamera->currentState && playerCamera->currentState->id == RE::CameraState::kFirstPerson) {
+            auto player3D = player->Get3D();
+            if (player3D) {
+                // Check if player 3D is currently hidden (typical for first person)
+  //              m_wasPlayerHiddenBeforeFreeCam = player3D->flags.any(RE::NiAVObject::Flag::kHidden);
+                
+ //               if (m_wasPlayerHiddenBeforeFreeCam) {
+                    // Make player visible for free camera
+                    auto flags = player3D->GetFlags();
+//                    player3D->OnVisible();
+//                    player3D->flags.reset(RE::NiAVObject::Flag::kHidden);
+                    log::info("{}: Enabled player 3D visibility (was hidden in first person)", __FUNCTION__);
+//                }
+            }
+        }
+
         m_isFreeCameraActive = true;
         ToggleFreeCamera();
+
+        return true;
     }
 
     void FreeCameraManager::StopSecondSightEffect() {
@@ -96,6 +170,27 @@ namespace SecondSight {
 
         m_isFreeCameraActive = false;
         ToggleFreeCamera();
+    }
+
+    void FreeCameraManager::UpdateTarget() {
+        if (APIs::DTR && APIs::DTR->IsReticleActive()) {
+            m_target = APIs::DTR->GetCurrentTarget();
+        } else if (APIs::TrueDirectionalMovementV1 && APIs::TrueDirectionalMovementV1->GetTargetLockState()) {
+            auto targetHandle = APIs::TrueDirectionalMovementV1->GetCurrentTarget();
+            if (targetHandle) {
+                m_target = targetHandle.get().get();
+            } else {
+                m_target = nullptr;
+            }
+        } else {
+            m_target = _ts_SKSEFunctions::GetCrosshairTarget();
+        }
+
+        if (m_target && (!GetCameraAnchorPoint() || 
+                (m_target->GetDistance(RE::PlayerCharacter::GetSingleton()) > 8000.f) ||
+                m_target->IsDead(true))) {
+            m_target = nullptr;
+        }
     }
 
     RE::NiPointer<RE::NiAVObject> FreeCameraManager::GetCameraAnchorPoint() {
@@ -195,6 +290,10 @@ namespace SecondSight {
     }
 
     bool FreeCameraManager::InitializeTimeline(size_t& a_timelineID) {
+        if (!APIs::FCFW) {
+            return false;
+        }
+
         SKSE::PluginHandle handle = SKSE::GetPluginHandle();
 
         if (a_timelineID != 0) {
@@ -248,7 +347,11 @@ namespace SecondSight {
         return true;     
     }
 
-    bool FreeCameraManager::UpdateTimeline2() {                
+    bool FreeCameraManager::UpdateTimeline2() { 
+        if (!APIs::FCFW) {
+            return false;
+        }
+        
         if (!InitializeTimeline(m_atTarget_TimelineID)) {
             return false;
         }
@@ -265,7 +368,11 @@ namespace SecondSight {
         return true;     
     }
 
-    bool FreeCameraManager::UpdateTimeline3() {                
+    bool FreeCameraManager::UpdateTimeline3() {   
+        if (!APIs::FCFW) {
+            return false;
+        }
+
         if (!InitializeTimeline(m_transitionToPrevious_TimelineID)) {
             return false;
         }
@@ -332,7 +439,7 @@ namespace SecondSight {
             }
 
             if (!APIs::FCFW->StartPlayback(SKSE::GetPluginHandle(), m_transitionToTarget_TimelineID,
-                1.0f, false, false, false, 0.0f, true, 0.0f, true)) { // a_showMenusDuringPlayback = true
+                1.0f, false, false, false, 0.0f, true, 100.0f /*a_minHeightAboveGround*/, true /*a_showMenusDuringPlayback*/)) {
                 log::warn("{}: Could not start playback", __FUNCTION__);
             }
         } else if (activeTimelineID == m_transitionToTarget_TimelineID || activeTimelineID == m_atTarget_TimelineID) {

@@ -9,23 +9,18 @@ namespace SecondSight {
             return 1;
         }
 
-        void StartSecondSightEffect(RE::StaticFunctionTag*, RE::Actor* a_actor) {
-            FreeCameraManager::GetSingleton().StartSecondSightEffect(a_actor); 
+        bool StartSecondSightEffect(RE::StaticFunctionTag*) {
+            return FreeCameraManager::GetSingleton().StartSecondSightEffect(); 
         }
 
         void StopSecondSightEffect(RE::StaticFunctionTag*) {
             FreeCameraManager::GetSingleton().StopSecondSightEffect(); 
-        }
-
-        RE::Actor* GetCrosshairTarget(RE::StaticFunctionTag*, float a_maxTargetDistance, float a_maxTargetScanAngle) {
-            return _ts_SKSEFunctions::GetCrosshairTarget(a_maxTargetDistance, a_maxTargetScanAngle);
         }
         
         bool SecondSightFunctions(RE::BSScript::Internal::VirtualMachine * a_vm){
             a_vm->RegisterFunction("GetSecondSightPluginVersion", "_ts_SecondSightFunctions", GetSecondSightPluginVersion);
             a_vm->RegisterFunction("StartSecondSightEffect", "_ts_SecondSightFunctions", StartSecondSightEffect);
             a_vm->RegisterFunction("StopSecondSightEffect", "_ts_SecondSightFunctions", StopSecondSightEffect);
-            a_vm->RegisterFunction("GetCrosshairTarget", "_ts_SecondSightFunctions", GetCrosshairTarget);
             return true;
         }
     } // namespace Interface

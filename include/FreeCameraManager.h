@@ -1,3 +1,5 @@
+#pragma once
+
 namespace SecondSight {
     
     class FreeCameraManager {
@@ -10,18 +12,21 @@ namespace SecondSight {
             FreeCameraManager& operator=(const FreeCameraManager&) = delete;
 
             static void FCFWMessageHandler(SKSE::MessagingInterface::Message* a_msg);
+            static void DTRMessageHandler(SKSE::MessagingInterface::Message* a_msg);
 
             void Initialize();
 
             void Update();
 
-            void StartSecondSightEffect(RE::Actor* a_actor);
+            bool StartSecondSightEffect();
 
             void StopSecondSightEffect();
 
         private:
             FreeCameraManager() = default;
             ~FreeCameraManager() = default;
+
+            void UpdateTarget();
 
             void ToggleFreeCamera();
 
