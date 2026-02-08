@@ -12,14 +12,16 @@ namespace SecondSight {
             FreeCameraManager& operator=(const FreeCameraManager&) = delete;
 
             static void FCFWMessageHandler(SKSE::MessagingInterface::Message* a_msg);
-            static void DTRMessageHandler(SKSE::MessagingInterface::Message* a_msg);
+//            static void DTRMessageHandler(SKSE::MessagingInterface::Message* a_msg);
 
             void Initialize();
 
             void Update();
 
             bool StartSecondSightEffect();
-
+            
+            RE::Actor* GetTarget() { UpdateTarget(); return m_target; }
+            
             void StopSecondSightEffect();
 
         private:
@@ -53,7 +55,9 @@ namespace SecondSight {
             RE::NiPoint2 m_prevFreeRotation;
             RE::Actor* m_target = nullptr;
             RE::BSTPoint2<float> m_prevRotation;
-            RE::NiPoint3 m_offset;
+            RE::NiPoint3 m_offset = RE::NiPoint3(0.0f, 0.0f, 0.0f);
+            RE::BSTPoint2<float> m_rotationOffset = RE::BSTPoint2<float>();
+
             bool m_useReticleTarget = false;
             bool m_isFreeCameraActive = false;
 

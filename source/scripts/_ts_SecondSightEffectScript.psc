@@ -13,6 +13,10 @@ sound property SoundFXLoop auto
 
 event OnEffectStart(actor akTarget, actor akCaster)
 
+; For debug / testing purposes, toggle display of local coordinate frame of speficic body parts
+;	actor target = _ts_SecondSightFunctions.GetTarget()
+;	FCFW_SKSEFunctions.ToggleBodyPartRotationMatrixDisplay(target, 1) ; 1: head, 2: torso
+;	return;
 	if stage == 0
         if (!_ts_SecondSightFunctions.StartSecondSightEffect())
 			return
@@ -39,6 +43,9 @@ event OnEffectStart(actor akTarget, actor akCaster)
 endEvent
 
 event OnEffectFinish(actor akTarget, actor akCaster)
+; For debug / testing purposes, toggle display of local coordinate frame of speficic body parts
+;	FCFW_SKSEFunctions.ToggleBodyPartRotationMatrixDisplay(akTarget, 1)
+;	return;
 
     _ts_SecondSightFunctions.StopSecondSightEffect()
 

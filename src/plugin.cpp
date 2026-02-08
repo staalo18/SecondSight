@@ -9,6 +9,10 @@ namespace SecondSight {
             return 1;
         }
 
+        RE::Actor* GetTarget(RE::StaticFunctionTag*) {
+            return FreeCameraManager::GetSingleton().GetTarget();
+        }
+
         bool StartSecondSightEffect(RE::StaticFunctionTag*) {
             return FreeCameraManager::GetSingleton().StartSecondSightEffect(); 
         }
@@ -21,6 +25,7 @@ namespace SecondSight {
             a_vm->RegisterFunction("GetSecondSightPluginVersion", "_ts_SecondSightFunctions", GetSecondSightPluginVersion);
             a_vm->RegisterFunction("StartSecondSightEffect", "_ts_SecondSightFunctions", StartSecondSightEffect);
             a_vm->RegisterFunction("StopSecondSightEffect", "_ts_SecondSightFunctions", StopSecondSightEffect);
+            a_vm->RegisterFunction("GetTarget", "_ts_SecondSightFunctions", GetTarget);
             return true;
         }
     } // namespace Interface

@@ -2,6 +2,7 @@
 #include "_ts_SKSEFunctions.h"
 #include "APIManager.h"
 #include "Offsets.h"
+#include "CLIBUtil/EditorID.hpp"
 
 namespace SecondSight {
     void FreeCameraManager::Initialize()
@@ -30,14 +31,14 @@ namespace SecondSight {
         if (!SKSE::GetMessagingInterface()->RegisterListener(FCFW_API::FCFWPluginName, SecondSight::FreeCameraManager::FCFWMessageHandler)) {
             log::warn("{}: Failed to register FCFW message listener", __FUNCTION__);
         }
-
+/*
         if (APIs::DTR)
         {
             // Register listener for DTR target reticle events
             if (!SKSE::GetMessagingInterface()->RegisterListener(DTR_API::DTRPluginName, SecondSight::FreeCameraManager::DTRMessageHandler)) {
                 log::warn("{}: Failed to register DTR message listener", __FUNCTION__);
             }
-        }
+        } */
     }
 
     void FreeCameraManager::FCFWMessageHandler(SKSE::MessagingInterface::Message* a_msg)
@@ -76,6 +77,7 @@ namespace SecondSight {
         }
     }
 
+/*
     void FreeCameraManager::DTRMessageHandler(SKSE::MessagingInterface::Message* a_msg)
     {
         if (!APIs::DTR) {
@@ -97,7 +99,7 @@ namespace SecondSight {
             break;
         }
     }
-
+*/
     
     void FreeCameraManager::Update() {
         if (RE::UI::GetSingleton()->GameIsPaused()) {
@@ -106,6 +108,12 @@ namespace SecondSight {
 
         if (IsPlaybackActive()) {
             ClampFreeRotation();
+
+
+//            auto* player = RE::PlayerCharacter::GetSingleton();
+//            if (player) {
+//                log::info("{}: Player 3rdPerson visible during free camera: {}", __FUNCTION__, player->Is3rdPersonVisible());
+//            }
     
             if (!(m_target && m_target->Get3D2())) {
                 // lost target
@@ -165,6 +173,11 @@ auto* playerCamera = RE::PlayerCamera::GetSingleton();
             return;
         }
         if (!m_isFreeCameraActive) {
+            return;
+        }
+
+        if (!m_target) {
+            log::error("{}: No target available.", __FUNCTION__);
             return;
         }
 
@@ -228,9 +241,10 @@ auto* playerCamera = RE::PlayerCamera::GetSingleton();
 
     bool FreeCameraManager::IsPlaybackActive() const { 
         if (!APIs::FCFW) {
-            log::error("{}: FCFW API not available, cannot update timeline", __FUNCTION__);
+            log::error("{}: FCFW API not available.", __FUNCTION__);
             return false;
         }
+
         SKSE::PluginHandle handle = SKSE::GetPluginHandle();
 
         if (APIs::FCFW->IsPlaybackRunning(handle, m_transitionToTarget_TimelineID) ||
@@ -243,7 +257,7 @@ auto* playerCamera = RE::PlayerCamera::GetSingleton();
     }
 
     bool FreeCameraManager::InitializePlayback() {
-        if (IsPlaybackActive()) {
+        if (!m_target || IsPlaybackActive()) {
             return false;
         }
 
@@ -259,8 +273,86 @@ auto* playerCamera = RE::PlayerCamera::GetSingleton();
             return false;
         }
 
-        m_offset = targetPoint->world.translate - m_target->GetPosition();
-        m_offset.y += 20.f; // move 20 units into 'forward' direction to account for head dimensions
+        auto race = m_target->GetRace();
+        if (!race || !race->bodyPartData) {
+            return false;
+        }
+        
+        auto bodyPartEDID = clib_util::editorID::get_editorID(race->bodyPartData);
+
+        m_offset.x = 0.0f;    // left (-) / right (+) -  no sideways offset
+
+        m_rotationOffset.x = 0.0f; // pitch
+        m_rotationOffset.y = 0.0f; // yaw
+        // define offset to account for head dimensions
+        if (bodyPartEDID == "DragonBodyPartData" || bodyPartEDID == "DLC2DragonBodyPartData") {
+            m_offset.y = 40.0f;    // forward (+) / backward (-)
+            m_offset.z = 40.0f;    // up (+) / down (-)
+        } else if (bodyPartEDID == "ChaurusBodyPartData") {
+            m_offset.y = 40.0f;   // forward (+) / backward (-)
+            m_offset.z = 0.0f;    // up (+) / down (-)
+        } else if (bodyPartEDID == "ChickenBodyPartData") {
+            m_offset.y = 10.0f;   // forward (+) / backward (-)
+            m_offset.z = 0.0f;    // up (+) / down (-)
+        } else if (bodyPartEDID == "CowBodyPartData" || bodyPartEDID == "DeerBodyPartData") {
+            m_offset.y = 20.0f;    // forward (+) / backward (-)
+            m_offset.z = 20.0f;    // up (+) / down (-)
+            m_rotationOffset.x = -30.0f * PI / 180.f; // pitch
+        } else if (bodyPartEDID == "DLC2MountedRieklingBodyPartData") {
+            m_offset.y = 20.0f;    // forward (+) / backward (-)
+            m_offset.z = 20.0f;    // up (+) / down (-)
+            m_rotationOffset.x = -10.0f * PI / 180.f; // pitch
+        } else if (bodyPartEDID == "HareBodyPartData") {
+            m_offset.y = 10.0f;    // forward (+) / backward (-)
+            m_offset.z = 10.0f;    // up (+) / down (-)
+            m_rotationOffset.x = 30.0f * PI / 180.f; // pitch
+        } else if (bodyPartEDID == "BearBodyPartData" || bodyPartEDID == "BenthicLurkerBodyPartData" ||
+                   bodyPartEDID == "DogBodyPartData") {
+            m_offset.y = 30.0f;    // forward (+) / backward (-)
+            m_offset.z = 0.0f;    // up (+) / down (-)
+        } else if (bodyPartEDID == "HorkerBodyPartData") {
+            m_offset.y = 30.0f;    // forward (+) / backward (-)
+            m_offset.z = 0.0f;    // up (+) / down (-)
+            m_rotationOffset.x = 20.0f * PI / 180.f; // pitch
+        } else if (bodyPartEDID == "DLC2HMDaedraPartData") {
+            m_offset.y = 60.0f;   // forward (+) / backward (-)
+            m_offset.z = 80.0f;    // up (+) / down (-)
+        } else if (bodyPartEDID == "MammothBodyPartData") {
+            m_offset.y = 0.0f;   // forward (+) / backward (-)
+            m_offset.z = 100.0f;    // up (+) / down (-)
+            m_rotationOffset.x = -40.0f * PI / 180.f; // pitch
+        } else if (bodyPartEDID == "FrostbiteSpiderPartData") {
+            m_offset.y = 20.0f;   // forward (+) / backward (-)
+            m_offset.z = 40.0f;    // up (+) / down (-)
+        } else if (bodyPartEDID == "DLC2ScribBodyPartData") {
+            m_offset.y = 20.0f;    // forward (+) / backward (-)
+            m_offset.z = 10.0f;    // up (+) / down (-)
+            m_rotationOffset.x =-20.0f * PI / 180.f; // pitch
+        } else if (bodyPartEDID == "SabreCatBodyPartData" || bodyPartEDID == "TrollBodyPartData" ||
+                   bodyPartEDID == "WerewolfBeastBodyPartData") {
+            m_offset.y = 40.0f;    // forward (+) / backward (-)
+            m_offset.z = 0.0f;    // up (+) / down (-)
+            m_rotationOffset.x =-20.0f * PI / 180.f; // pitch
+        } else if (bodyPartEDID == "AtronachFlameBodyPartData" || bodyPartEDID == "AtronachFrostBodyPartData" ||
+                   bodyPartEDID == "AtronachStormBodyPartData" || bodyPartEDID == "DefaultBodyPartData" ||
+                   bodyPartEDID == "DLC2NetchBodyPartData" || bodyPartEDID == "DLC2RieklingBodyPartData" ||
+                   bodyPartEDID == "DragonPriestBodyPartData" || bodyPartEDID == "DraugrBodyPartData" ||
+                   bodyPartEDID == "DwarvenBallistaCenturionBodyPartData" || bodyPartEDID == "DwarvenSpiderPartData" ||
+                   bodyPartEDID == "DwarvenSteamCenturionBodyPartData" || bodyPartEDID == "FalmerBodyPartData" ||
+                   bodyPartEDID == "GargoyleBodyPartData" || bodyPartEDID == "GiantBodyPartData" ||
+                   bodyPartEDID == "HagravenBodyPartData" || bodyPartEDID == "MudcrabPartData" ||
+                   bodyPartEDID == "SprigganBodyPartData" || bodyPartEDID == "WitchlightBodyPartData" ||
+                   bodyPartEDID == "SlaughterfishBodyPartData" || bodyPartEDID == "WispBodyPartData" ||
+                   bodyPartEDID == "DwarvenSphereCenturionBodyPartData" || bodyPartEDID == "ChaurusFlyerBodyPartData" ||
+                   bodyPartEDID == "HorseBodyPartData" || bodyPartEDID == "GoatBodyPartData" ||
+                   bodyPartEDID == "SkeeverBodyPartData" || bodyPartEDID == "IceWraithBodyPartData") {
+            m_offset.y = 20.0f;   // forward (+) / backward (-)
+            m_offset.z = 0.0f;    // up (+) / down (-)
+        } else {
+            log::warn("{}: Unknown bodyPartEDID: {}, using default offset", __FUNCTION__, bodyPartEDID);
+            m_offset.y = 20.0f;   // forward (+) / backward (-)
+            m_offset.z = 0.0f;    // up (+) / down (-)
+        }
 
         m_previousCameraPos = _ts_SKSEFunctions::GetCameraPos();
 
@@ -319,6 +411,11 @@ auto* playerCamera = RE::PlayerCamera::GetSingleton();
             return false;
         }
 
+        if (!m_target) {
+            log::error("{}: No target available to update timeline.", __FUNCTION__);
+            return false;
+        }
+
         if (!InitializePlayback()) {
             return false;
         }
@@ -338,10 +435,10 @@ auto* playerCamera = RE::PlayerCamera::GetSingleton();
         int ret;
         ret = APIs::FCFW->AddTranslationPointAtCamera(handle, m_transitionToTarget_TimelineID, 0.0f, true, true);
         ret = APIs::FCFW->AddRotationPointAtCamera(handle, m_transitionToTarget_TimelineID, 0.f, true, true);
-        ret = APIs::FCFW->AddRotationPointAtRef(handle, m_transitionToTarget_TimelineID, rotationToMovement_End, m_target, rotationOffset, false, true, true);
-        ret = APIs::FCFW->AddRotationPointAtRef(handle, m_transitionToTarget_TimelineID, rotationToTarget_Start, m_target, rotationOffset, false, true, true);
-        ret = APIs::FCFW->AddTranslationPointAtRef(handle, m_transitionToTarget_TimelineID, transitionTime, m_target, m_offset, true, true, true);
-        ret = APIs::FCFW->AddRotationPointAtRef(handle, m_transitionToTarget_TimelineID, transitionTime, m_target, rotationOffset, true, true, true);
+        ret = APIs::FCFW->AddRotationPointAtRef(handle, m_transitionToTarget_TimelineID, rotationToMovement_End, m_target, FCFW_API::BodyPart::kHead, rotationOffset, false, true, true);
+        ret = APIs::FCFW->AddRotationPointAtRef(handle, m_transitionToTarget_TimelineID, rotationToTarget_Start, m_target, FCFW_API::BodyPart::kHead, rotationOffset, false, true, true);
+        ret = APIs::FCFW->AddTranslationPointAtRef(handle, m_transitionToTarget_TimelineID, transitionTime, m_target, FCFW_API::BodyPart::kHead, m_offset, true, true, true);
+        ret = APIs::FCFW->AddRotationPointAtRef(handle, m_transitionToTarget_TimelineID, transitionTime, m_target, FCFW_API::BodyPart::kHead, m_rotationOffset, true, true, true);
         ret = APIs::FCFW->SetPlaybackMode(handle, m_transitionToTarget_TimelineID, 2);
 
         return true;     
@@ -352,6 +449,11 @@ auto* playerCamera = RE::PlayerCamera::GetSingleton();
             return false;
         }
         
+        if (!m_target) {
+            log::error("{}: No target available to update timeline.", __FUNCTION__);
+            return false;
+        }
+
         if (!InitializeTimeline(m_atTarget_TimelineID)) {
             return false;
         }
@@ -360,8 +462,8 @@ auto* playerCamera = RE::PlayerCamera::GetSingleton();
         RE::BSTPoint2<float> rotationOffset = RE::BSTPoint2<float>(); // no offset
 
         int ret;
-        ret = APIs::FCFW->AddTranslationPointAtRef(handle, m_atTarget_TimelineID, 0.f, m_target, m_offset, true, true, true);
-        ret = APIs::FCFW->AddRotationPointAtRef(handle, m_atTarget_TimelineID, 0.f, m_target, rotationOffset, true, true, true);
+        ret = APIs::FCFW->AddTranslationPointAtRef(handle, m_atTarget_TimelineID, 0.f, m_target, FCFW_API::BodyPart::kHead, m_offset, true, true, true);
+        ret = APIs::FCFW->AddRotationPointAtRef(handle, m_atTarget_TimelineID, 0.f, m_target, FCFW_API::BodyPart::kHead, m_rotationOffset, true, true, true);
         ret = APIs::FCFW->SetPlaybackMode(handle, m_atTarget_TimelineID, 2);
         APIs::FCFW->AllowUserRotation(handle, m_atTarget_TimelineID, true);
 
@@ -370,6 +472,11 @@ auto* playerCamera = RE::PlayerCamera::GetSingleton();
 
     bool FreeCameraManager::UpdateTimeline3() {   
         if (!APIs::FCFW) {
+            return false;
+        }
+
+        if (!m_target) {
+            log::error("{}: No target available to update timeline.", __FUNCTION__);
             return false;
         }
 
@@ -385,7 +492,7 @@ auto* playerCamera = RE::PlayerCamera::GetSingleton();
         int ret;
         ret = APIs::FCFW->AddTranslationPointAtCamera(handle, m_transitionToPrevious_TimelineID, 0.0f, true, true);
         ret = APIs::FCFW->AddRotationPointAtCamera(handle, m_transitionToPrevious_TimelineID, 0.f, true, true);
-        ret = APIs::FCFW->AddRotationPointAtRef(handle, m_transitionToPrevious_TimelineID, 0.5f * transitionTime, m_target, rotationOffset, false, true, true);
+        ret = APIs::FCFW->AddRotationPointAtRef(handle, m_transitionToPrevious_TimelineID, 0.5f * transitionTime, m_target, FCFW_API::BodyPart::kHead, rotationOffset, true, true, true);
         ret = APIs::FCFW->AddTranslationPoint(handle, m_transitionToPrevious_TimelineID, transitionTime, m_previousCameraPos, true, true);
         ret = APIs::FCFW->AddRotationPoint(handle, m_transitionToPrevious_TimelineID, transitionTime, m_prevRotation, true, true);
 
@@ -405,16 +512,19 @@ auto* playerCamera = RE::PlayerCamera::GetSingleton();
 			return;
 		}
 
-        float heading = m_target->GetHeading(false);
-        
+        RE::NiPoint3 headRotation = _ts_SKSEFunctions::GetBodyPartRotation(m_target, RE::BGSBodyPartDefs::LIMB_ENUM::kHead);
+        float headYaw = headRotation.z;
+        float headPitch = headRotation.x;
+
         // Clamp pitch
-        freeCameraState->rotation.x = _ts_SKSEFunctions::NormalRelativeAngle(freeCameraState->rotation.x);
-        freeCameraState->rotation.x = std::clamp(freeCameraState->rotation.x, - 0.45f * PI, 0.4f * PI);
+        float relativePitch = _ts_SKSEFunctions::NormalRelativeAngle(freeCameraState->rotation.x - headPitch);
+        relativePitch = std::clamp(relativePitch, - 0.45f * PI, 0.4f * PI);
+        freeCameraState->rotation.x = _ts_SKSEFunctions::NormalRelativeAngle(headPitch + relativePitch);
         
         // Clamp yaw
-        float relativeYaw = _ts_SKSEFunctions::NormalRelativeAngle(freeCameraState->rotation.y - heading);
+        float relativeYaw = _ts_SKSEFunctions::NormalRelativeAngle(freeCameraState->rotation.y - headYaw);
         relativeYaw = std::clamp(relativeYaw, -0.5f * PI, 0.5f * PI);
-        freeCameraState->rotation.y = _ts_SKSEFunctions::NormalRelativeAngle(heading + relativeYaw);
+        freeCameraState->rotation.y = _ts_SKSEFunctions::NormalRelativeAngle(headYaw + relativeYaw);
     }
 
     void FreeCameraManager::ToggleFreeCamera() {
@@ -439,7 +549,7 @@ auto* playerCamera = RE::PlayerCamera::GetSingleton();
             }
 
             if (!APIs::FCFW->StartPlayback(SKSE::GetPluginHandle(), m_transitionToTarget_TimelineID,
-                1.0f, false, false, false, 0.0f, true, 100.0f /*a_minHeightAboveGround*/, true /*a_showMenusDuringPlayback*/)) {
+                1.0f, false, false, false, 0.0f, true, 10.0f /*a_minHeightAboveGround*/, true /*a_showMenusDuringPlayback*/)) {
                 log::warn("{}: Could not start playback", __FUNCTION__);
             }
         } else if (activeTimelineID == m_transitionToTarget_TimelineID || activeTimelineID == m_atTarget_TimelineID) {
