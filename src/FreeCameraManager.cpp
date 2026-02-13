@@ -2,6 +2,7 @@
 #include "_ts_SKSEFunctions.h"
 #include "APIManager.h"
 #include "Offsets.h"
+#include "CrosshairTargetManager.h"
 #include "CLIBUtil/EditorID.hpp"
 
 namespace SecondSight {
@@ -19,13 +20,16 @@ namespace SecondSight {
             APIs::DTR->ShowReticle(true);
         }
 
-        if (!APIs::FCFW->RegisterPlugin(SKSE::GetPluginHandle())) {
-            log::error("{}: Could not register SecondSight plugin with FCFW!", __FUNCTION__);
-        }
-    
+        // Reset state before RegisterPlugin (which cleans up orphaned timelines)
+        m_isFreeCameraActive = false;
+        m_target = nullptr;
         m_transitionToTarget_TimelineID = 0;
         m_atTarget_TimelineID = 0;
         m_transitionToPrevious_TimelineID = 0;
+
+        if (!APIs::FCFW->RegisterPlugin(SKSE::GetPluginHandle())) {
+            log::error("{}: Could not register SecondSight plugin with FCFW!", __FUNCTION__);
+        }
 
         // Register listener for FCFW timeline events
         if (!SKSE::GetMessagingInterface()->RegisterListener(FCFW_API::FCFWPluginName, SecondSight::FreeCameraManager::FCFWMessageHandler)) {
@@ -108,12 +112,6 @@ namespace SecondSight {
 
         if (IsPlaybackActive()) {
             ClampFreeRotation();
-
-
-//            auto* player = RE::PlayerCharacter::GetSingleton();
-//            if (player) {
-//                log::info("{}: Player 3rdPerson visible during free camera: {}", __FUNCTION__, player->Is3rdPersonVisible());
-//            }
     
             if (!(m_target && m_target->Get3D2())) {
                 // lost target
@@ -186,7 +184,7 @@ auto* playerCamera = RE::PlayerCamera::GetSingleton();
     }
 
     void FreeCameraManager::UpdateTarget() {
-        if (APIs::DTR && APIs::DTR->IsReticleActive()) {
+        if (APIs::DTR && APIs::DTR->IsReticleActive()) { // if DTR reticle active, use DTR target (has prio)
             m_target = APIs::DTR->GetCurrentTarget();
         } else if (APIs::TrueDirectionalMovementV1 && APIs::TrueDirectionalMovementV1->GetTargetLockState()) {
             auto targetHandle = APIs::TrueDirectionalMovementV1->GetCurrentTarget();
@@ -195,8 +193,17 @@ auto* playerCamera = RE::PlayerCamera::GetSingleton();
             } else {
                 m_target = nullptr;
             }
-        } else {
-            m_target = _ts_SKSEFunctions::GetCrosshairTarget();
+        } else { // no other plugin found that would provide target info, use own logic
+            // first, check directly under the cross hair (has prio)
+            m_target =  CrosshairTargetManager::GetSingleton().GetActorUnderCrosshair();
+
+            // if no actor under crosshair, try to find a target with GetCrosshairTarget() (cone and bounding shape based search)
+            if (!m_target) {
+                m_target = _ts_SKSEFunctions::GetCrosshairTarget(8000.0f, 0.5f);
+log::info("{}: No target under crosshair, using GetCrosshairTarget().", __FUNCTION__);
+            } else {
+log::info("{}: Found target under crosshair: 0x{:X}", __FUNCTION__, m_target->GetFormID());
+            }
         }
 
         if (m_target && (!GetCameraAnchorPoint() || 
@@ -439,7 +446,7 @@ auto* playerCamera = RE::PlayerCamera::GetSingleton();
         ret = APIs::FCFW->AddRotationPointAtRef(handle, m_transitionToTarget_TimelineID, rotationToTarget_Start, m_target, FCFW_API::BodyPart::kHead, rotationOffset, false, true, true);
         ret = APIs::FCFW->AddTranslationPointAtRef(handle, m_transitionToTarget_TimelineID, transitionTime, m_target, FCFW_API::BodyPart::kHead, m_offset, true, true, true);
         ret = APIs::FCFW->AddRotationPointAtRef(handle, m_transitionToTarget_TimelineID, transitionTime, m_target, FCFW_API::BodyPart::kHead, m_rotationOffset, true, true, true);
-        ret = APIs::FCFW->SetPlaybackMode(handle, m_transitionToTarget_TimelineID, 2);
+        ret = APIs::FCFW->SetPlaybackMode(handle, m_transitionToTarget_TimelineID, FCFW_API::PlaybackMode::kWait);
 
         return true;     
     }
@@ -464,7 +471,7 @@ auto* playerCamera = RE::PlayerCamera::GetSingleton();
         int ret;
         ret = APIs::FCFW->AddTranslationPointAtRef(handle, m_atTarget_TimelineID, 0.f, m_target, FCFW_API::BodyPart::kHead, m_offset, true, true, true);
         ret = APIs::FCFW->AddRotationPointAtRef(handle, m_atTarget_TimelineID, 0.f, m_target, FCFW_API::BodyPart::kHead, m_rotationOffset, true, true, true);
-        ret = APIs::FCFW->SetPlaybackMode(handle, m_atTarget_TimelineID, 2);
+        ret = APIs::FCFW->SetPlaybackMode(handle, m_atTarget_TimelineID, FCFW_API::PlaybackMode::kWait);
         APIs::FCFW->AllowUserRotation(handle, m_atTarget_TimelineID, true);
 
         return true;     

@@ -1,11 +1,12 @@
 {
     "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
     "name": "secondsight",
-    "version-string": "0.0.1",
+    "version-string": " 1.0.0",
     "dependencies": [
         "simpleini",
         "spdlog",
         "directxtk",
-        "rapidcsv"    
+        "rapidcsv",
+        "xbyak"    
     ]  
 }

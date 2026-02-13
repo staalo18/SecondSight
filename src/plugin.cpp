@@ -2,6 +2,7 @@
 #include "Hooks.h"
 #include "FreeCameraManager.h"
 #include "APIManager.h"
+#include "CrosshairTargetManager.h"
 
 namespace SecondSight {
     namespace Interface {
@@ -51,6 +52,12 @@ void MessageHandler(SKSE::MessagingInterface::Message* a_msg)
 	case SKSE::MessagingInterface::kNewGame:
 		APIs::RequestAPIs();
         SecondSight::FreeCameraManager::GetSingleton().Initialize();
+        SecondSight::CrosshairTargetManager::Register();
+        
+        if (!GetModuleHandleA("po3_Tweaks.dll")) {
+            log::warn("{}: po3_Tweaks.dll not found.", __FUNCTION__);
+            RE::DebugMessageBox("powerofthree's Tweaks not installed? Second Sight will not function properly.");
+        }
 		break;
 	}
 }
