@@ -554,9 +554,17 @@ log::info("{}: Found target under crosshair: 0x{:X}", __FUNCTION__, m_target->Ge
                 log::warn("{}: Could not update timeline2", __FUNCTION__);
                 return;
             }
+            
+            if (!APIs::FCFW->SetFollowGround(SKSE::GetPluginHandle(), m_transitionToTarget_TimelineID, true, 10.0f)) {
+                log::warn("{}: Could not set follow ground", __FUNCTION__);
+            }
+
+            if (!APIs::FCFW->SetMenuVisibility(SKSE::GetPluginHandle(), m_transitionToTarget_TimelineID, true)) {
+                log::warn("{}: Could not set menu visibility", __FUNCTION__);
+            }
 
             if (!APIs::FCFW->StartPlayback(SKSE::GetPluginHandle(), m_transitionToTarget_TimelineID,
-                1.0f, false, false, false, 0.0f, true, 10.0f /*a_minHeightAboveGround*/, true /*a_showMenusDuringPlayback*/)) {
+                1.0f, false, false, false, 0.0f)) {
                 log::warn("{}: Could not start playback", __FUNCTION__);
             }
         } else if (activeTimelineID == m_transitionToTarget_TimelineID || activeTimelineID == m_atTarget_TimelineID) {

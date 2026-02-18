@@ -30,7 +30,7 @@ set(OUTPUT_FOLDER "C:/Users/tom/AppData/Local/ModOrganizer/MO_SkyrimSE/mods/_DEV
 
 option(ENABLE_SKYRIM_SE "Enable support for Skyrim SE in the dynamic runtime feature." ON)
 option(ENABLE_SKYRIM_AE "Enable support for Skyrim AE in the dynamic runtime feature." ON)
-option(ENABLE_SKYRIM_VR "Enable support for Skyrim VR in the dynamic runtime feature." ON)
+option(ENABLE_SKYRIM_VR "Enable support for Skyrim VR in the dynamic runtime feature." OFF)
 set(BUILD_TESTS OFF)
 
 # Get all source files from src/ and include/

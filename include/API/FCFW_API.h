@@ -209,6 +209,22 @@ namespace FCFW_API {
 		[[nodiscard]] virtual int AddRotationPointAtCamera(SKSE::PluginHandle a_pluginHandle, size_t a_timelineID, float a_time, bool a_easeIn = false, bool a_easeOut = false, InterpolationMode a_interpolationMode = InterpolationMode::kCubicHermite) const noexcept = 0;
 
 		/// <summary>
+		/// Add a FOV (Field of View) point to the timeline.
+		/// FOV controls camera zoom level in degrees (1-160, default 80).
+		/// </summary>
+		/// <param name="a_pluginHandle">Plugin handle of the calling plugin (use SKSE::GetPluginHandle())</param>
+		/// <param name="a_timelineID">Timeline ID to add the point to</param>
+		/// <param name="a_time">Time in seconds when this point occurs</param>
+		/// <param name="a_fov">Field of view in degrees (1-160)</param>
+		/// <param name="a_easeIn">Apply ease-in at the start of interpolation (default: false)</param>
+		/// <param name="a_easeOut">Apply ease-out at the end of interpolation (default: false)</param>
+		/// <param name="a_interpolationMode">Interpolation mode (default: kCubicHermite)</param>
+		/// <returns>Index of the added point, or -1 on failure</returns>
+		/// <remarks>NOTE: Both easeIn and easeOut control the INCOMING segment (previous→current point), not the outgoing segment.
+		/// For smooth transition through a point, set easeOut=false for the current point AND easeIn=false for the next point.</remarks>
+		[[nodiscard]] virtual int AddFOVPoint(SKSE::PluginHandle a_pluginHandle, size_t a_timelineID, float a_time, float a_fov, bool a_easeIn = false, bool a_easeOut = false, InterpolationMode a_interpolationMode = InterpolationMode::kCubicHermite) const noexcept = 0;
+
+		/// <summary>
 		/// Remove a translation point from a timeline
 		/// </summary>
 		/// <param name="a_pluginHandle">Plugin handle of the calling plugin (use SKSE::GetPluginHandle())</param>
@@ -225,6 +241,15 @@ namespace FCFW_API {
 		/// <param name="a_index">Index of the point to remove</param>
 		/// <returns>true if the point was removed, false on failure</returns>
 		[[nodiscard]] virtual bool RemoveRotationPoint(SKSE::PluginHandle a_pluginHandle, size_t a_timelineID, size_t a_index) const noexcept = 0;
+
+		/// <summary>
+		/// Remove a FOV point from a timeline
+		/// </summary>
+		/// <param name="a_pluginHandle">Plugin handle of the calling plugin (use SKSE::GetPluginHandle())</param>
+		/// <param name="a_timelineID">Timeline ID to remove the point from</param>
+		/// <param name="a_index">Index of the point to remove</param>
+		/// <returns>true if the point was removed, false on failure</returns>
+		[[nodiscard]] virtual bool RemoveFOVPoint(SKSE::PluginHandle a_pluginHandle, size_t a_timelineID, size_t a_index) const noexcept = 0;
 
         /// <summary>
         /// Start recording camera movement to a timeline.
@@ -296,12 +321,31 @@ namespace FCFW_API {
 		[[nodiscard]] virtual RE::BSTPoint2<float> GetRotationPoint(SKSE::PluginHandle a_pluginHandle, size_t a_timelineID, size_t a_index) const noexcept = 0;
 
 		/// <summary>
+		/// Get the number of FOV points in the timeline.
+		/// </summary>
+		/// <param name="a_pluginHandle">Plugin handle for ownership validation</param>
+		/// <param name="a_timelineID">Timeline ID to query</param>
+		/// <returns>Number of FOV points, or -1 if timeline not found or not owned</returns>
+		[[nodiscard]] virtual int GetFOVPointCount(SKSE::PluginHandle a_pluginHandle, size_t a_timelineID) const noexcept = 0;
+
+		/// <summary>
+		/// Get the FOV value of a FOV point by index.
+		/// </summary>
+		/// <param name="a_pluginHandle">Plugin handle for ownership validation</param>
+		/// <param name="a_timelineID">Timeline ID to query</param>
+		/// <param name="a_index">Index of the FOV point (0-based)</param>
+		/// <returns>FOV value in degrees, or 80.0 if timeline not found/owned or index out of range</returns>
+		[[nodiscard]] virtual float GetFOVPoint(SKSE::PluginHandle a_pluginHandle, size_t a_timelineID, size_t a_index) const noexcept = 0;
+
+		/// <summary>
 		/// Start playing the camera timeline.
 		/// If a_useDuration is true: 
         ///     plays complete timeline with total time a_duration seconds
 		/// If a_useDuration is false:
         ///     plays timeline with a_speed as speed multiplier.
         /// Global easing (a_globalEaseIn/Out) applies to overall playback in both modes.
+		/// NOTE: To control ground following, menu visibility, and user rotation, use the separate SetFollowGround(),
+		///       SetMenuVisibility(), and AllowUserRotation() functions before or during playback.
 		/// </summary>
 		/// <param name="a_pluginHandle">Plugin handle for ownership validation</param>
 		/// <param name="a_timelineID">Timeline ID to start playback on</param>
@@ -310,12 +354,9 @@ namespace FCFW_API {
 		/// <param name="a_globalEaseOut">Apply ease-out at the end of entire playback (default: false)</param>
 		/// <param name="a_useDuration">If true, plays complete timeline with total time a_duration seconds; if false, uses a_speed multiplier (default: false)</param>
 		/// <param name="a_duration">Total duration in seconds for entire timeline, only used if a_useDuration is true (default: 0.0)</param>
-		/// <param name="a_followGround">If true, keeps camera above ground/water level during playback (default: true)</param>
-		/// <param name="a_minHeightAboveGround">Minimum height above ground when following ground (default: 0.0)</param>
-		/// <param name="a_showMenusDuringPlayback">If true, keeps menus visible during playback; if false, hides menus (default: false)</param>
 		/// <param name="a_startTime">Start playback at this time in seconds (default: 0.0 = start from beginning). Useful for resuming playback after save/load.</param>
 		/// <returns>true on success, false on failure</returns>
-		[[nodiscard]] virtual bool StartPlayback(SKSE::PluginHandle a_pluginHandle, size_t a_timelineID, float a_speed = 1.0f, bool a_globalEaseIn = false, bool a_globalEaseOut = false, bool a_useDuration = false, float a_duration = 0.0f, bool a_followGround = true, float a_minHeightAboveGround = 0.0f, bool a_showMenusDuringPlayback = false, float a_startTime = 0.0f) const noexcept = 0;
+		[[nodiscard]] virtual bool StartPlayback(SKSE::PluginHandle a_pluginHandle, size_t a_timelineID, float a_speed = 1.0f, bool a_globalEaseIn = false, bool a_globalEaseOut = false, bool a_useDuration = false, float a_duration = 0.0f, float a_startTime = 0.0f) const noexcept = 0;
 
 		/// <summary>
 		/// Stop playback of a camera timeline.
@@ -393,6 +434,7 @@ namespace FCFW_API {
 
 		/// <summary>
 		/// Enable or disable user rotation control during playback for a specific timeline.
+		/// Can be called before or during playback to change behavior dynamically.
 		/// </summary>
 		/// <param name="a_pluginHandle">Plugin handle for ownership validation</param>
 		/// <param name="a_timelineID">Timeline ID to configure</param>
@@ -408,7 +450,57 @@ namespace FCFW_API {
 		[[nodiscard]] virtual bool IsUserRotationAllowed(SKSE::PluginHandle a_pluginHandle, size_t a_timelineID) const noexcept = 0;
 
 		/// <summary>
+		/// Enable or disable ground following and set minimum height above ground.
+		/// Can be called before or during playback to change behavior dynamically.
+		/// When enabled, camera will stay above ground/water level during playback.
+		/// </summary>
+		/// <param name="a_pluginHandle">Plugin handle for ownership validation</param>
+		/// <param name="a_timelineID">Timeline ID to configure</param>
+		/// <param name="a_follow">True to enable ground following, false to disable</param>
+		/// <param name="a_minHeight">Minimum height above ground when following ground (default: 0.0)</param>
+		/// <returns>True if successfully set, false on failure</returns>
+		[[nodiscard]] virtual bool SetFollowGround(SKSE::PluginHandle a_pluginHandle, size_t a_timelineID, bool a_follow, float a_minHeight = 0.0f) const noexcept = 0;
+
+		/// <summary>
+		/// Check if ground following is currently enabled for a specific timeline.
+		/// </summary>
+		/// <param name="a_pluginHandle">Plugin handle for ownership validation</param>
+		/// <param name="a_timelineID">Timeline ID to check</param>
+		/// <returns>True if ground following is enabled, false otherwise or if not owned</returns>
+		[[nodiscard]] virtual bool IsGroundFollowingEnabled(SKSE::PluginHandle a_pluginHandle, size_t a_timelineID) const noexcept = 0;
+
+		/// <summary>
+		/// Get the minimum height above ground for a specific timeline.
+		/// </summary>
+		/// <param name="a_pluginHandle">Plugin handle for ownership validation</param>
+		/// <param name="a_timelineID">Timeline ID to query</param>
+		/// <returns>Minimum height in game units, or -1.0f if timeline not found or not owned</returns>
+		[[nodiscard]] virtual float GetMinHeightAboveGround(SKSE::PluginHandle a_pluginHandle, size_t a_timelineID) const noexcept = 0;
+
+		/// <summary>
+		/// Set menu visibility during playback for a specific timeline.
+		/// Can be called before or during playback to change behavior dynamically.
+		/// </summary>
+		/// <param name="a_pluginHandle">Plugin handle for ownership validation</param>
+		/// <param name="a_timelineID">Timeline ID to configure</param>
+		/// <param name="a_show">True to show menus during playback, false to hide</param>
+		/// <returns>True if successfully set, false on failure</returns>
+		[[nodiscard]] virtual bool SetMenuVisibility(SKSE::PluginHandle a_pluginHandle, size_t a_timelineID, bool a_show) const noexcept = 0;
+
+		/// <summary>
+		/// Check if menus are currently visible for a specific timeline.
+		/// </summary>
+		/// <param name="a_pluginHandle">Plugin handle for ownership validation</param>
+		/// <param name="a_timelineID">Timeline ID to check</param>
+		/// <returns>True if menus are visible, false otherwise or if not owned</returns>
+		[[nodiscard]] virtual bool AreMenusVisible(SKSE::PluginHandle a_pluginHandle, size_t a_timelineID) const noexcept = 0;
+
+		// ===== TIMELINE PROPERTIES (set during timeline definition) =====
+
+		/// <summary>
 		/// Set the playback mode and loop time offset for a timeline.
+		/// This defines the timeline's intrinsic end-of-playback behavior.
+		/// Should be called during timeline definition, before StartPlayback().
 		/// </summary>
 		/// <param name="a_pluginHandle">Plugin handle for ownership validation</param>
 		/// <param name="a_timelineID">Timeline ID to configure</param>
