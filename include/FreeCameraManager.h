@@ -54,9 +54,9 @@ namespace SecondSight {
             RE::NiPoint3 m_previousCameraPos;
             RE::NiPoint2 m_prevFreeRotation;
             RE::Actor* m_target = nullptr;
-            RE::BSTPoint2<float> m_prevRotation;
+            RE::NiPoint3 m_prevRotation;
             RE::NiPoint3 m_offset = RE::NiPoint3(0.0f, 0.0f, 0.0f);
-            RE::BSTPoint2<float> m_rotationOffset = RE::BSTPoint2<float>();
+            RE::NiPoint3 m_rotationOffset = RE::NiPoint3(0.0f, 0.0f, 0.0f);
 
             bool m_useReticleTarget = false;
             bool m_isFreeCameraActive = false;

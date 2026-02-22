@@ -13,5 +13,7 @@ struct APIs
 
     static inline TDM_API::IVTDM1* TrueDirectionalMovementV1 = nullptr;
 
-	static void RequestAPIs();
+    static inline TDM_API::IVTDM5* TrueDirectionalMovementV5 = nullptr;
+
+    static void RequestAPIs();
 };

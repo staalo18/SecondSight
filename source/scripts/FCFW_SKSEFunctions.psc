@@ -81,27 +81,29 @@ int Function AddTranslationPointAtRef(string modName, int timelineID, float time
 ; Returns: index of the added point, or -1 on failure
 int Function AddTranslationPointAtCamera(string modName, int timelineID, float time, bool easeIn = false, bool easeOut = false, int interpolationMode = 2) global native
 
-; Add a rotation point with specified pitch and yaw
+; Add a rotation point with specified pitch, yaw, and roll
 ; modName: name of your mod's ESP/ESL file (e.g., "MyMod.esp")
 ; timelineID: timeline ID to add the point to
 ; time: time in seconds when this point occurs
-; pitch: relative to world coords
-; yaw: relative to world coords
+; pitch: pitch in degrees relative to world coords
+; yaw: yaw in degrees relative to world coords
+; roll: roll in degrees relative to world coords (default: 0.0)
 ; easeIn: ease in at the start of interpolation
 ; easeOut: ease out at the end of interpolation
 ; interpolationMode: 0=None, 1=Linear, 2=CubicHermite (default)
 ; Returns: index of the added point, or -1 on failure
 ; NOTE: Both easeIn and easeOut control the INCOMING segment (previous->current point), not the outgoing segment.
 ; For smooth transition through a point, set easeOut=false for the current point AND easeIn=false for the next point.
-int Function AddRotationPoint(string modName, int timelineID, float time, float pitch, float yaw, bool easeIn = false, bool easeOut = false, int interpolationMode = 2) global native
+int Function AddRotationPoint(string modName, int timelineID, float time, float pitch, float yaw, float roll = 0.0, bool easeIn = false, bool easeOut = false, int interpolationMode = 2) global native
 
 ; Add a rotation point that sets the rotation relative to camera-to-reference direction, or alternatively the ref's heading
 ; time: time in seconds when this point occurs
 ; reference: the object reference to track
 ; bodyPart: which body part to track rotation from (0=root, 1=eye, 2=head, 3=torso, default: 0=root)
-; offsetPitch: pitch offset from camera-to-reference direction (isOffsetRelative == false) / the ref's heading (isOffsetRelative == true)
-; offsetYaw: isOffsetRelative == false - yaw offset from camera-to-reference direction. A value of 0 means looking directly at the reference.
-;            isOffsetRelative == true - yaw offset from reference's heading. A value of 0 means looking into the direction the ref is heading.
+; offsetPitch: pitch offset in degrees from camera-to-reference direction (isOffsetRelative == false) / the ref's heading (isOffsetRelative == true)
+; offsetYaw: yaw offset in degrees. isOffsetRelative == false - offset from camera-to-reference direction. A value of 0 means looking directly at the reference.
+;            isOffsetRelative == true - offset from reference's heading. A value of 0 means looking into the direction the ref is heading.
+; offsetRoll: roll offset in degrees (default: 0.0)
 ; isOffsetRelative: if true, offset is relative to reference's heading instead of camera-to-reference direction.
 ; easeIn: ease in at the start of interpolation
 ; easeOut: ease out at the end of interpolation
@@ -109,7 +111,7 @@ int Function AddRotationPoint(string modName, int timelineID, float time, float 
 ; Returns: index of the added point on success, -1 on failure
 ; NOTE: Both easeIn and easeOut control the INCOMING segment (previous->current point), not the outgoing segment.
 ; For smooth transition through a point, set easeOut=false for the current point AND easeIn=false for the next point.
-int Function AddRotationPointAtRef(string modName, int timelineID, float time, ObjectReference reference, int bodyPart = 0, float offsetPitch = 0.0, float offsetYaw = 0.0, bool isOffsetRelative = false, bool easeIn = false, bool easeOut = false, int interpolationMode = 2) global native
+int Function AddRotationPointAtRef(string modName, int timelineID, float time, ObjectReference reference, int bodyPart = 0, float offsetPitch = 0.0, float offsetYaw = 0.0, float offsetRoll = 0.0, bool isOffsetRelative = false, bool easeIn = false, bool easeOut = false, int interpolationMode = 2) global native
 
 ; Add a rotation point that captures camera rotation at the start of playback
 ; This point can be used to start playback smoothly from the last camera rotation, and return to it later.
@@ -236,6 +238,13 @@ float Function GetRotationPointPitch(string modName, int timelineID, int index) 
 ; index: 0-based index of the point
 ; Returns: yaw in radians, or 0.0 if timeline not found or index out of range
 float Function GetRotationPointYaw(string modName, int timelineID, int index) global native
+
+; Get the roll (in radians) of a rotation point by index
+; modName: name of your mod's ESP/ESL file (e.g., "MyMod.esp")
+; timelineID: timeline ID to query
+; index: 0-based index of the point
+; Returns: roll in radians, or 0.0 if timeline not found or index out of range
+float Function GetRotationPointRoll(string modName, int timelineID, int index) global native
 
 ; Get the FOV value of a FOV point by index
 ; modName: name of your mod's ESP/ESL file (e.g., "MyMod.esp")

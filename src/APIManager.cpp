@@ -27,5 +27,11 @@ void APIs::RequestAPIs()
 		}
 	}
 
+	if (!TrueDirectionalMovementV5) {
+		TrueDirectionalMovementV5 = reinterpret_cast<TDM_API::IVTDM5*>(TDM_API::RequestPluginAPI(TDM_API::InterfaceVersion::V5));
+		if (TrueDirectionalMovementV5) {
+			log::info("Obtained TrueDirectionalMovement API (V5) - {0:x}", reinterpret_cast<uintptr_t>(TrueDirectionalMovementV5));
+		}
+	}
 }
 

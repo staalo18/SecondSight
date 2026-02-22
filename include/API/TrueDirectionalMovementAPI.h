@@ -18,7 +18,8 @@
 		V1,
 		V2,
 		V3,
-		V4
+		V4,
+		V5
 	};
 
 	// Error types that may be returned by the True Directional Movement API
@@ -189,6 +190,31 @@
 		[[nodiscard]] virtual bool IsTargetLockBehindTarget() const noexcept = 0;
 	};
 
+	class IVTDM5 : public IVTDM4
+	{
+	public:
+		/// <summary>
+		/// Request the plugin to forcibly disable target lock reticle.
+		/// If granted, target lock reticle will be disabled for the duration of your control.
+		/// </summary>
+		/// <param name="a_myPluginHandle">Your assigned plugin handle</param>
+		/// <returns>OK, MustKeep, AlreadyGiven, AlreadyTaken</returns>
+		[[nodiscard]] virtual APIResult RequestDisableTargetLock(PluginHandle a_myPluginHandle) noexcept = 0;
+
+		/// <summary>
+		/// Release your forced disable of target lock reticle.
+		/// </summary>
+		/// <param name="a_myPluginHandle">Your assigned plugin handle</param>
+		/// <returns>OK, NotOwner</returns>
+		virtual APIResult ReleaseDisableTargetLock(PluginHandle a_myPluginHandle) noexcept = 0;
+
+		/// <summary>
+		/// Returns the current owner of the forced disable of target lock reticle.
+		/// </summary>
+		/// <returns>Handle or kPluginHandle_Invalid if no one currently owns the resource</returns>
+		virtual PluginHandle GetDisableTargetLockOwner() const noexcept = 0;
+	};
+
 	typedef void* (*_RequestPluginAPI)(const InterfaceVersion interfaceVersion);
 
 	/// <summary>
@@ -197,7 +223,7 @@
 	/// </summary>
 	/// <param name="a_interfaceVersion">The interface version to request</param>
 	/// <returns>The pointer to the API singleton, or nullptr if request failed</returns>
-	[[nodiscard]] inline void* RequestPluginAPI(const InterfaceVersion a_interfaceVersion = InterfaceVersion::V4)
+	[[nodiscard]] inline void* RequestPluginAPI(const InterfaceVersion a_interfaceVersion = InterfaceVersion::V5)
 	{
 		auto pluginHandle = GetModuleHandle("TrueDirectionalMovement.dll");
 		_RequestPluginAPI requestAPIFunction = (_RequestPluginAPI)GetProcAddress(pluginHandle, "RequestPluginAPI");

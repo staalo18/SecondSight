@@ -134,29 +134,11 @@ namespace SecondSight {
             log::warn("{}: Free Camera is already active.", __FUNCTION__);
             return false;
         }
-        // Check if coming from first person and player 3D is hidden
-        auto* player = RE::PlayerCharacter::GetSingleton();
-//        m_wasPlayerHiddenBeforeFreeCam = false;
-        
-auto* playerCamera = RE::PlayerCamera::GetSingleton();
-        if (!playerCamera) {
-            log::error("{}: PlayerCamera not available", __FUNCTION__);
-            return false;
-        }
 
-        if (player && playerCamera->currentState && playerCamera->currentState->id == RE::CameraState::kFirstPerson) {
-            auto player3D = player->Get3D();
-            if (player3D) {
-                // Check if player 3D is currently hidden (typical for first person)
-  //              m_wasPlayerHiddenBeforeFreeCam = player3D->flags.any(RE::NiAVObject::Flag::kHidden);
-                
- //               if (m_wasPlayerHiddenBeforeFreeCam) {
-                    // Make player visible for free camera
-                    auto flags = player3D->GetFlags();
-//                    player3D->OnVisible();
-//                    player3D->flags.reset(RE::NiAVObject::Flag::kHidden);
-                    log::info("{}: Enabled player 3D visibility (was hidden in first person)", __FUNCTION__);
-//                }
+        if (APIs::TrueDirectionalMovementV5) {
+            auto result = APIs::TrueDirectionalMovementV5->RequestDisableTargetLock(SKSE::GetPluginHandle());
+            if (result != TDM_API::APIResult::OK) {
+                log::warn("{}: Failed to disable target lock control from True Directional Movement API. Result: {}", __FUNCTION__, static_cast<int>(result));
             }
         }
 
@@ -177,6 +159,13 @@ auto* playerCamera = RE::PlayerCamera::GetSingleton();
         if (!m_target) {
             log::error("{}: No target available.", __FUNCTION__);
             return;
+        }
+
+        if (APIs::TrueDirectionalMovementV5) {
+            auto result = APIs::TrueDirectionalMovementV5->ReleaseDisableTargetLock(SKSE::GetPluginHandle());
+            if (result != TDM_API::APIResult::OK) {
+                log::warn("{}: Failed to release target lock control from True Directional Movement API. Result: {}", __FUNCTION__, static_cast<int>(result));
+            }
         }
 
         m_isFreeCameraActive = false;
@@ -290,7 +279,8 @@ log::info("{}: Found target under crosshair: 0x{:X}", __FUNCTION__, m_target->Ge
         m_offset.x = 0.0f;    // left (-) / right (+) -  no sideways offset
 
         m_rotationOffset.x = 0.0f; // pitch
-        m_rotationOffset.y = 0.0f; // yaw
+        m_rotationOffset.y = 0.0f; // roll
+        m_rotationOffset.z = 0.0f; // yaw
         // define offset to account for head dimensions
         if (bodyPartEDID == "DragonBodyPartData" || bodyPartEDID == "DLC2DragonBodyPartData") {
             m_offset.y = 40.0f;    // forward (+) / backward (-)
@@ -365,6 +355,7 @@ log::info("{}: Found target under crosshair: 0x{:X}", __FUNCTION__, m_target->Ge
 
         m_prevRotation.x = 0.0f;
         m_prevRotation.y = 0.0f;
+        m_prevRotation.z = 0.0f;
 
         RE::ThirdPersonState* thirdPersonState = nullptr;
         if (playerCamera->currentState) {
@@ -378,7 +369,8 @@ log::info("{}: Found target under crosshair: 0x{:X}", __FUNCTION__, m_target->Ge
 
             auto rotation = _ts_SKSEFunctions::GetCameraRotation();
             m_prevRotation.x = rotation.x; // pitch
-            m_prevRotation.y = rotation.z; // yaw
+            m_prevRotation.y = rotation.y; // roll
+            m_prevRotation.z = rotation.z; // yaw
         } else{
             log::warn("{}: PlayerCamera currentState is null", __FUNCTION__);
         }
@@ -437,7 +429,7 @@ log::info("{}: Found target under crosshair: 0x{:X}", __FUNCTION__, m_target->Ge
         float rotationToTarget_Start = 0.5f * transitionTime; // the time the camera starts rotating towards the target
 
         SKSE::PluginHandle handle = SKSE::GetPluginHandle();
-        RE::BSTPoint2<float> rotationOffset = RE::BSTPoint2<float>(); // no offset
+        RE::NiPoint3 rotationOffset = RE::NiPoint3(); // no offset
 
         int ret;
         ret = APIs::FCFW->AddTranslationPointAtCamera(handle, m_transitionToTarget_TimelineID, 0.0f, true, true);
@@ -466,7 +458,7 @@ log::info("{}: Found target under crosshair: 0x{:X}", __FUNCTION__, m_target->Ge
         }
 
         SKSE::PluginHandle handle = SKSE::GetPluginHandle();
-        RE::BSTPoint2<float> rotationOffset = RE::BSTPoint2<float>(); // no offset
+        RE::NiPoint3 rotationOffset = RE::NiPoint3(); // no offset
 
         int ret;
         ret = APIs::FCFW->AddTranslationPointAtRef(handle, m_atTarget_TimelineID, 0.f, m_target, FCFW_API::BodyPart::kHead, m_offset, true, true, true);
@@ -494,7 +486,7 @@ log::info("{}: Found target under crosshair: 0x{:X}", __FUNCTION__, m_target->Ge
         float transitionTime = ComputeTransitionTime(m_previousCameraPos);
 
         SKSE::PluginHandle handle = SKSE::GetPluginHandle();
-        RE::BSTPoint2<float> rotationOffset = RE::BSTPoint2<float>(); // no offset
+        RE::NiPoint3 rotationOffset = RE::NiPoint3(); // no offset
         
         int ret;
         ret = APIs::FCFW->AddTranslationPointAtCamera(handle, m_transitionToPrevious_TimelineID, 0.0f, true, true);
